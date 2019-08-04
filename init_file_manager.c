@@ -1,7 +1,4 @@
-#include <dirent.h>
 #include <stdlib.h>
-#include <sys/types.h>
-
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <signal.h>
@@ -16,7 +13,7 @@ void sig_winch(int signo)
 	resizeterm(size.ws_row, size.ws_col);
 }
 
-int init_file_manager()
+int init_file_manager(WINDOW** dwin_left, WINDOW** dwin_right)
 {
 	WINDOW* win_left;
 	WINDOW* win_right;
@@ -33,6 +30,7 @@ int init_file_manager()
 	cbreak();
 	noecho();
 	curs_set(FALSE);
+	keypad(stdscr, TRUE);
 	refresh();
 
 	startx2 = get_startx2();
@@ -49,12 +47,14 @@ int init_file_manager()
 		return -1;
 	}
 
-	getch();
+	*dwin_left = derwin(win_left, row - 2, col - 2, 1, 1);
+	*dwin_right = derwin(win_right, row - 2, col - 2, 1, 1);
+
+	// keypad(*dwin_left, TRUE);
+	// keypad(*dwin_right, TRUE);
 
 	delwin(win_right);
 	delwin(win_left);
-
-	endwin();
 
 	return 0;
 }
