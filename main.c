@@ -31,7 +31,6 @@ void set_color_row(WINDOW* win, int row, const char* str, int num)
 	wattron(win, COLOR_PAIR(num));
 	wmove(win, row, 0);
 	wprintw(win, "%s", str);
-	wrefresh(win);
 }
 
 int main()
@@ -51,18 +50,26 @@ int main()
 	read_dir(win[0], &(namelist[0]), &(n[0]));
 	read_dir(win[1], &(namelist[1]), &(n[1]));
 
-	
-
-	wattron(win[curr_win], COLOR_PAIR(1));
-	wmove(win[curr_win], row[curr_win], 0);
-	wprintw(win[curr_win], "%s", namelist[curr_win][row[curr_win]]->d_name);
+	set_color_row(win[curr_win], row[curr_win],
+			namelist[curr_win][row[curr_win]]->d_name, 1);
 	wrefresh(win[curr_win]);
 
 	while ((act = wgetch(stdscr)) != KEY_BACKSPACE) {
 		switch (act) {
-			case KEY_ENTER:
+			case 10: // Enter
 				break;
-			case KEY_STAB:
+			case 9: // Tab
+				set_color_row(win[curr_win], row[curr_win],
+				namelist[curr_win][row[curr_win]]->d_name, 2);
+
+				wrefresh(win[curr_win]);
+
+				curr_win ^= 1;
+
+				set_color_row(win[curr_win], row[curr_win],
+				namelist[curr_win][row[curr_win]]->d_name, 1);
+
+				wrefresh(win[curr_win]);
 				break;
 			case KEY_UP:
 				if (row[curr_win] > 0)
