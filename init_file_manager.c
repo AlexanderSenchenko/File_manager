@@ -27,11 +27,15 @@ int init_file_manager(WINDOW** dwin_left, WINDOW** dwin_right)
 
 	initscr();
 	signal(SIGWINCH, sig_winch);
+	start_color();
 	cbreak();
 	noecho();
 	curs_set(FALSE);
 	keypad(stdscr, TRUE);
 	refresh();
+
+	init_pair(1, COLOR_BLACK, COLOR_WHITE);
+	init_pair(2, COLOR_WHITE, COLOR_BLACK);
 
 	startx2 = get_startx2();
 	
