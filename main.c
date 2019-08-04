@@ -6,6 +6,10 @@
 
 #include <dirent.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "init_file_manager.h"
 #include "dir.h"
 
@@ -33,12 +37,24 @@ void set_color_row(WINDOW* win, int row, const char* str, int num)
 	wprintw(win, "%s", str);
 }
 
+int check_dir(const char *str)
+{
+	struct stat sb;
+	int ret;
+
+	ret = stat(str, &sb);
+	return ((sb.st_mode & S_IFMT) == S_IFDIR) ? 0 : 1;
+}
+
 int main()
 {
 	WINDOW* win[2];
 
 	int act;
 	int curr_win = 0;
+	int ret_check;
+	int ret_chdir;
+	const char* ptr_buff;
 
 	struct dirent** namelist[2];
 	int n[2];
@@ -57,6 +73,30 @@ int main()
 	while ((act = wgetch(stdscr)) != KEY_BACKSPACE) {
 		switch (act) {
 			case 10: // Enter
+				ptr_buff = namelist[curr_win][row[curr_win]]->d_name;
+				ret_check = check_dir(ptr_buff);
+
+				if (!ret_check) {
+					free_namelist(namelist[curr_win], n[curr_win]);
+
+					wattron(win[curr_win], COLOR_PAIR(2));
+					row[curr_win] = 0;
+					wclear(win[curr_win]);
+
+					ret_chdir = chdir(ptr_buff);
+					if (ret_chdir) {} // Error
+
+					read_dir(win[curr_win],
+						 &(namelist[curr_win]),
+						 &(n[curr_win]));
+
+					set_color_row(win[curr_win],
+						      row[curr_win],
+						      namelist[curr_win][row[curr_win]]->d_name,
+						      1);
+					wrefresh(win[curr_win]);
+				}
+					
 				break;
 			case 9: // Tab
 				set_color_row(win[curr_win], row[curr_win],
