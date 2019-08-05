@@ -27,15 +27,25 @@ int init_file_manager(WINDOW** dwin_left, WINDOW** dwin_right)
 
 	initscr();
 	signal(SIGWINCH, sig_winch);
+
+	#ifndef DEBUG
 	start_color();
+	#endif
+
 	cbreak();
 	noecho();
+	
+	#ifndef DEBUG
 	curs_set(FALSE);
+	#endif
+
 	keypad(stdscr, TRUE);
 	refresh();
 
-	init_pair(1, COLOR_BLACK, COLOR_WHITE);
-	init_pair(2, COLOR_WHITE, COLOR_BLACK);
+	#ifndef DEBUG
+	init_pair(COLOR_TEXT, COLOR_BLACK, COLOR_WHITE);
+	init_pair(UNCOLOR_TEXT, COLOR_WHITE, COLOR_BLACK);
+	#endif
 
 	startx2 = get_startx2();
 	
@@ -54,9 +64,6 @@ int init_file_manager(WINDOW** dwin_left, WINDOW** dwin_right)
 	*dwin_left = derwin(win_left, row - 2, col - 2, 1, 1);
 	*dwin_right = derwin(win_right, row - 2, col - 2, 1, 1);
 
-	// keypad(*dwin_left, TRUE);
-	// keypad(*dwin_right, TRUE);
-
 	delwin(win_right);
 	delwin(win_left);
 
@@ -69,9 +76,11 @@ static int init_win(WINDOW** win, int row, int col, int starty, int startx)
 	if (*win == NULL)
 		return -1;
 
+	#ifndef DEBUG
 	box(*win, '|', '-');
 
 	wrefresh(*win);
+	#endif
 
 	return 0;
 }

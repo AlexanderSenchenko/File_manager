@@ -18,16 +18,23 @@
 
 void act_mv(WINDOW*, int*, struct dirent**, int);
 void set_color_row(WINDOW*, int, const char*, int);
+int check_dir(const char*);
+void act_tab(WINDOW**, int*, struct dirent***, int*);
+void act_enter(WINDOW*, int*, struct dirent***, int*);
 
 void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
 {
-	set_color_row(win, *row, namelist[*row]->d_name, 2);
+	#ifndef DEBUG
+	set_color_row(win, *row, namelist[*row]->d_name, UNCOLOR_TEXT);
+	#endif
 
 	(*row) += way_move;
 
-	set_color_row(win, *row, namelist[*row]->d_name, 1);
+	#ifndef DEBUG
+	set_color_row(win, *row, namelist[*row]->d_name, COLOR_TEXT);
 
 	wrefresh(win);
+	#endif
 }
 
 void set_color_row(WINDOW* win, int row, const char* str, int num)
@@ -37,13 +44,66 @@ void set_color_row(WINDOW* win, int row, const char* str, int num)
 	wprintw(win, "%s", str);
 }
 
-int check_dir(const char *str)
+int check_dir(const char* str)
 {
 	struct stat sb;
 	int ret;
 
 	ret = stat(str, &sb);
 	return ((sb.st_mode & S_IFMT) == S_IFDIR) ? 0 : 1;
+}
+
+void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win)
+{
+	#ifndef DEBUG
+	set_color_row(win[*curr_win], row[*curr_win],
+			namelist[*curr_win][row[*curr_win]]->d_name,
+			UNCOLOR_TEXT);
+
+	wrefresh(win[*curr_win]);
+	#endif
+
+	*curr_win ^= 1;
+
+	#ifndef DEBUG
+	set_color_row(win[*curr_win], row[*curr_win],
+			namelist[*curr_win][row[*curr_win]]->d_name,
+			COLOR_TEXT);
+
+	wrefresh(win[*curr_win]);
+	#endif
+}
+
+void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
+{
+	const char* ptr_buff;
+	int ret_check_dir;
+	int ret_chdir;
+
+	ptr_buff = (*namelist)[*row]->d_name;
+	ret_check_dir = check_dir(ptr_buff);
+
+	if (!ret_check_dir) {
+		free_namelist(*namelist, *n);
+
+		#ifndef DEBUG
+		wattron(win, COLOR_PAIR(UNCOLOR_TEXT));
+		wclear(win);
+		#endif
+
+		*row = 0;
+
+		ret_chdir = chdir(ptr_buff);
+		if (ret_chdir) {} // Error
+
+		read_dir(win, namelist, n);
+
+		#ifndef DEBUG
+		set_color_row(win, *row, (*namelist)[*row]->d_name,
+							COLOR_TEXT);
+		wrefresh(win);
+		#endif
+	}
 }
 
 int main()
@@ -66,50 +126,21 @@ int main()
 	read_dir(win[0], &(namelist[0]), &(n[0]));
 	read_dir(win[1], &(namelist[1]), &(n[1]));
 
+	#ifndef DEBUG
 	set_color_row(win[curr_win], row[curr_win],
-			namelist[curr_win][row[curr_win]]->d_name, 1);
+			namelist[curr_win][row[curr_win]]->d_name, COLOR_TEXT);
 	wrefresh(win[curr_win]);
+	#endif
 
 	while ((act = wgetch(stdscr)) != KEY_BACKSPACE) {
 		switch (act) {
 			case 10: // Enter
-				ptr_buff = namelist[curr_win][row[curr_win]]->d_name;
-				ret_check = check_dir(ptr_buff);
-
-				if (!ret_check) {
-					free_namelist(namelist[curr_win], n[curr_win]);
-
-					wattron(win[curr_win], COLOR_PAIR(2));
-					row[curr_win] = 0;
-					wclear(win[curr_win]);
-
-					ret_chdir = chdir(ptr_buff);
-					if (ret_chdir) {} // Error
-
-					read_dir(win[curr_win],
-						 &(namelist[curr_win]),
-						 &(n[curr_win]));
-
-					set_color_row(win[curr_win],
-						      row[curr_win],
-						      namelist[curr_win][row[curr_win]]->d_name,
-						      1);
-					wrefresh(win[curr_win]);
-				}
-					
+				act_enter(win[curr_win], &(row[curr_win]),
+						&(namelist[curr_win]),
+						&(n[curr_win]));
 				break;
 			case 9: // Tab
-				set_color_row(win[curr_win], row[curr_win],
-				namelist[curr_win][row[curr_win]]->d_name, 2);
-
-				wrefresh(win[curr_win]);
-
-				curr_win ^= 1;
-
-				set_color_row(win[curr_win], row[curr_win],
-				namelist[curr_win][row[curr_win]]->d_name, 1);
-
-				wrefresh(win[curr_win]);
+				act_tab(win, row, namelist, &curr_win);
 				break;
 			case KEY_UP:
 				if (row[curr_win] > 0)

@@ -14,7 +14,9 @@ int read_dir(WINDOW* win, struct dirent*** namelist, int* n)
 
 	if (*n < 0) return -1;
 
+	#ifndef DEBUG
 	output_dir(win, *namelist, *n);
+	#endif
 
 	return 0;
 }
