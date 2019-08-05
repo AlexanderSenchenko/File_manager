@@ -34,6 +34,8 @@ void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
 	set_color_row(win, *row, namelist[*row]->d_name, COLOR_TEXT);
 
 	wrefresh(win);
+	#else
+	printf("%s\n\r", namelist[*row]->d_name);
 	#endif
 }
 
@@ -71,6 +73,8 @@ void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win)
 			COLOR_TEXT);
 
 	wrefresh(win[*curr_win]);
+	#else
+	printf("%s\n\r", namelist[*curr_win][row[*curr_win]]->d_name);
 	#endif
 }
 
@@ -94,7 +98,10 @@ void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
 		*row = 0;
 
 		ret_chdir = chdir(ptr_buff);
-		if (ret_chdir) {} // Error
+		if (ret_chdir) {
+			endwin();
+			exit(1);
+		}
 
 		read_dir(win, namelist, n);
 
@@ -102,6 +109,8 @@ void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
 		set_color_row(win, *row, (*namelist)[*row]->d_name,
 							COLOR_TEXT);
 		wrefresh(win);
+		#else
+		printf("%s\n\r", (*namelist)[*row]->d_name);
 		#endif
 	}
 }
@@ -130,6 +139,8 @@ int main()
 	set_color_row(win[curr_win], row[curr_win],
 			namelist[curr_win][row[curr_win]]->d_name, COLOR_TEXT);
 	wrefresh(win[curr_win]);
+	#else
+	printf("%s\n\r", namelist[curr_win][row[curr_win]]->d_name);
 	#endif
 
 	while ((act = wgetch(stdscr)) != KEY_BACKSPACE) {
