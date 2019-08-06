@@ -20,7 +20,7 @@ void act_mv(WINDOW*, int*, struct dirent**, int);
 void set_color_row(WINDOW*, int, const char*, int);
 int check_dir(const char*);
 void act_tab(WINDOW**, int*, struct dirent***, int*);
-void act_enter(WINDOW*, int*, struct dirent***, int*);
+int act_enter(WINDOW*, int*, struct dirent***, int*);
 
 void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
 {
@@ -78,7 +78,7 @@ void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win)
 	#endif
 }
 
-void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
+int act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
 {
 	const char* ptr_buff;
 	int ret_check_dir;
@@ -88,6 +88,11 @@ void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
 	ret_check_dir = check_dir(ptr_buff);
 
 	if (!ret_check_dir) {
+		ret_chdir = chdir(ptr_buff);
+		if (ret_chdir) {
+			return -1;
+		}
+
 		free_namelist(*namelist, *n);
 
 		#ifndef DEBUG
@@ -96,13 +101,7 @@ void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
 		#endif
 
 		*row = 0;
-
-		ret_chdir = chdir(ptr_buff);
-		if (ret_chdir) {
-			endwin();
-			exit(1);
-		}
-
+		
 		read_dir(win, namelist, n);
 
 		#ifndef DEBUG
@@ -113,6 +112,8 @@ void act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
 		printf("%s\n\r", (*namelist)[*row]->d_name);
 		#endif
 	}
+
+	return 0;
 }
 
 int main()
