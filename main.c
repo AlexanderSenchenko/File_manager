@@ -12,109 +12,11 @@
 
 #include "init_file_manager.h"
 #include "dir.h"
+#include "act.h"
+#include "set_color.h"
 
 #define MOVE_UP -1
 #define MOVE_DOWN 1
-
-void act_mv(WINDOW*, int*, struct dirent**, int);
-void set_color_row(WINDOW*, int, const char*, int);
-int check_dir(const char*);
-void act_tab(WINDOW**, int*, struct dirent***, int*);
-int act_enter(WINDOW*, int*, struct dirent***, int*);
-
-void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
-{
-	#ifndef DEBUG
-	set_color_row(win, *row, namelist[*row]->d_name, UNCOLOR_TEXT);
-	#endif
-
-	(*row) += way_move;
-
-	#ifndef DEBUG
-	set_color_row(win, *row, namelist[*row]->d_name, COLOR_TEXT);
-
-	wrefresh(win);
-	#else
-	printf("%s\n\r", namelist[*row]->d_name);
-	#endif
-}
-
-void set_color_row(WINDOW* win, int row, const char* str, int num)
-{
-	wattron(win, COLOR_PAIR(num));
-	wmove(win, row, 0);
-	wprintw(win, "%s", str);
-}
-
-int check_dir(const char* str)
-{
-	struct stat sb;
-	int ret;
-
-	ret = stat(str, &sb);
-	return ((sb.st_mode & S_IFMT) == S_IFDIR) ? 0 : 1;
-}
-
-void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win)
-{
-	#ifndef DEBUG
-	set_color_row(win[*curr_win], row[*curr_win],
-			namelist[*curr_win][row[*curr_win]]->d_name,
-			UNCOLOR_TEXT);
-
-	wrefresh(win[*curr_win]);
-	#endif
-
-	*curr_win ^= 1;
-
-	#ifndef DEBUG
-	set_color_row(win[*curr_win], row[*curr_win],
-			namelist[*curr_win][row[*curr_win]]->d_name,
-			COLOR_TEXT);
-
-	wrefresh(win[*curr_win]);
-	#else
-	printf("%s\n\r", namelist[*curr_win][row[*curr_win]]->d_name);
-	#endif
-}
-
-int act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n)
-{
-	const char* ptr_buff;
-	int ret_check_dir;
-	int ret_chdir;
-
-	ptr_buff = (*namelist)[*row]->d_name;
-	ret_check_dir = check_dir(ptr_buff);
-
-	if (!ret_check_dir) {
-		ret_chdir = chdir(ptr_buff);
-		if (ret_chdir) {
-			return -1;
-		}
-
-		free_namelist(*namelist, *n);
-
-		#ifndef DEBUG
-		wattron(win, COLOR_PAIR(UNCOLOR_TEXT));
-		wclear(win);
-		#endif
-
-		*row = 0;
-		
-		read_dir(win, namelist, n);
-
-		#ifndef DEBUG
-		set_color_row(win, *row, (*namelist)[*row]->d_name,
-							COLOR_TEXT);
-		wrefresh(win);
-		#else
-		printf("%s\n\r", (*namelist)[*row]->d_name);
-		#endif
-	}
-
-	return 0;
-}
 
 int main()
 {
@@ -144,7 +46,7 @@ int main()
 	printf("%s\n\r", namelist[curr_win][row[curr_win]]->d_name);
 	#endif
 
-	while ((act = wgetch(stdscr)) != KEY_BACKSPACE) {
+	while ((act = wgetch(stdscr)) != KEY_F(10)) {
 		switch (act) {
 			case 10: // Enter
 				act_enter(win[curr_win], &(row[curr_win]),
