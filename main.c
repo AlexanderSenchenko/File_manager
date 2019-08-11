@@ -69,7 +69,7 @@ int main()
 						namelist[curr_win], MOVE_DOWN);
 				break;
 			case KEY_F(1):
-				act_copy(win, row, namelist, curr_win, &(cwd[curr_win]));
+				act_copy(win, row, namelist, n, curr_win, cwd);
 				break;
 			default:
 				break;

@@ -12,76 +12,160 @@
 
 #include <fcntl.h>
 
+#include <string.h>
+
+#include <errno.h>
+
 #include "act.h"
 #include "dir.h"
 #include "set_color.h"
+
+#define SIZE_BUF 64
 
 extern const int COLOR_TEXT;
 extern const int UNCOLOR_TEXT;
 
 extern int START_ROW_COMM_STR;
 
-void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int curr_win,
-								char** cwd)
+void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
+						int curr_win, char** cwd)
 {
 	const char* name = namelist[curr_win][row[curr_win]]->d_name;
 
 	struct stat sb;
-	int ret;
 
 	int fd_read;
 	int fd_write;
 
-	int ret_chdir;
-
 	int permission = 0;
 
-	#ifndef DEBUG
-	int max_y, max_x;
-	getmaxyx(stdscr, max_y, max_x);
-	#endif
+	off_t len;
+	ssize_t ret_read;
+	ssize_t ret_write;
+	char buf[SIZE_BUF];
+	memset(buf, 0, SIZE_BUF);
 
-	ret = stat(name, &sb);
-	if (ret) {
-		#if 0
-		wmove(stdscr, START_ROW_COMM_STR, 0);
-		whline(stdscr, ' ', max_x);
-		wmove(stdscr, START_ROW_COMM_STR, 0);
-		wrefresh(stdscr);
-		#endif
+	if (stat(name, &sb)) {
+		#ifndef DEBUG
+		output_to_comm_str("Error: stat");
+		#else
 		perror("stat");
+		#endif
 		return;
 	}
 
+	len = sb.st_size;
+
 	if ((sb.st_mode & S_IFMT) != S_IFREG) {
+		#ifndef DEBUG
+		output_to_comm_str("Error: not file");
+		#else
 		printf("%s not file\n", name);
+		#endif
 		return;
 	}
 
 	if ((permission = (sb.st_mode & S_IRUSR)) != S_IRUSR) {
-		#ifdef DEBUG
-		printf("Owner not have read permission\n");
+		#ifndef DEBUG
+		output_to_comm_str("Owner not have read permission");
+		#else
+		wprintw(stdscr, "Owner not have read permission");
 		#endif
 		return;
 	}
 
-	fd_read = open(name, O_RDONLY);
-	if (fd_read == -1) {
+	if ((fd_read = open(name, O_RDONLY)) == -1) {
+		#ifndef DEBUG
+		output_to_comm_str("Error: file not open");
+		#else
 		perror("open");
+		#endif
 		return;
 	}
 
-	ret_chdir = chdir(cwd[curr_win ^ 1]);
-	if (ret_chdir) {
+	if (chdir(cwd[curr_win ^ 1])) {
+		#ifndef DEBUG
+		output_to_comm_str("Error: chdir");
+		#else
 		perror("chdir");
+		#endif
 		close(fd_read);
 		return;
 	}
 
-	fd_write = open(name, O_WRONLY | O_CREAT);
+	permission = sb.st_mode & S_IRWXU;
+	permission |= sb.st_mode & S_IRWXG;
+	permission |= sb.st_mode & S_IRWXO;
+
+	fd_write = open(name, O_WRONLY | O_CREAT | O_EXCL, permission);
+	if (fd_write == -1) {
+		#ifndef DEBUG
+		output_to_comm_str("Error: open or creat");
+		#else
+		perror("open(not open or creat)");
+		#endif
+		close(fd_read);
+
+		if (chdir(cwd[curr_win])) {
+			#ifndef DEBUG
+			output_to_comm_str("Fatal error. Press any kay to continue...");
+			getch();
+			#else
+			perror("chdir");
+			#endif
+			close(fd_read);
+			close(fd_write);
+			exit(EXIT_FAILURE);
+		}
+		return;
+	}
+	
+	while ((len != 0) && ((ret_read = read(fd_read, buf, SIZE_BUF)) != 0)) {
+		if (ret_read == -1) {
+			if (errno == EINTR)
+				continue;
+			#ifndef DEBUG
+			output_to_comm_str("Fatal error: read");
+			#else
+			perror("read");
+			#endif
+			break;
+		}
+
+		len -= ret_read;
+
+		ret_write = write(fd_write, buf, ret_read);
+		if (ret_write == -1) {
+			#ifndef DEBUG
+			output_to_comm_str("Error: write");
+			#else
+			perror("write");
+			#endif
+			break;	
+		}
+
+		memset(buf, 0, ret_read);
+	}
 
 	close(fd_write);
 	close(fd_read);
+
+	free_namelist(namelist[curr_win ^ 1], n[curr_win ^ 1]);
+	wclear(win[curr_win ^ 1]);	
+	read_dir(win[curr_win ^ 1], &(namelist[curr_win ^ 1]),
+					&(n[curr_win ^ 1]), NULL);
+
+	if (chdir(cwd[curr_win])) {
+		#ifndef DEBUG
+		output_to_comm_str("Fatal error. Press any kay to continue...");
+		getch();
+		#else
+		perror("chdir");
+		#endif
+		close(fd_read);
+		close(fd_write);
+		exit(EXIT_FAILURE);
+	}
 }
 
 void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
@@ -178,6 +262,18 @@ int act_enter(WINDOW* win, int* row, struct dirent*** namelist, int* n,
 	}
 
 	return 0;
+}
+
+static void output_to_comm_str(const char* str)
+{
+	int max_y, max_x;
+	getmaxyx(stdscr, max_y, max_x);
+
+	wmove(stdscr, START_ROW_COMM_STR, 0);
+	whline(stdscr, ' ', max_x);
+	wmove(stdscr, START_ROW_COMM_STR, 0);
+	wprintw(stdscr, "%s", str);
+	wrefresh(stdscr);
 }
 
 static int check_dir(const char* str)

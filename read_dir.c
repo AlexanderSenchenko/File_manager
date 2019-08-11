@@ -19,10 +19,12 @@ int read_dir(WINDOW* win, struct dirent*** namelist, int* n, char** cwd)
 	if (*n < 0)
 		return -1;
 
-	*cwd = getcwd(NULL, 0);
-	if (!cwd) {
-		perror("getcwd");
-		return -1;
+	if (cwd != NULL) {
+		*cwd = getcwd(NULL, 0);
+		if (!cwd) {
+			perror("getcwd");
+			return -1;
+		}
 	}
 
 	#ifndef DEBUG
