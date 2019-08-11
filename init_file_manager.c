@@ -27,6 +27,8 @@ const char menu_items[COUNT_POINT_MENU][10] = {
 	"Quit"
 };
 
+WINDOW* win_comm_line;
+
 void sig_winch(int signo)
 {
 	struct winsize size;
@@ -114,7 +116,7 @@ static int init_menu()
 		curr_pos_x = (max_x / COUNT_POINT_MENU) * i;
 
 		wmove(win_menu, 0, curr_pos_x);
-		wprintw(win_menu, "%d-%s", i + 1, menu_items[i]);
+		wprintw(win_menu, "%2d-%s", i + 1, menu_items[i]);
 	}
 	
 	wrefresh(win_menu);
@@ -140,7 +142,10 @@ static int init_win(WINDOW** win, int row, int col, int starty, int startx)
 	wprintw(*win, "Name");
 
 	wmove(*win, 1, max_x / 2);
-	wprintw(*win, "| Size");
+	wvline(*win, '|', max_y - 2);
+
+	wmove(*win, 1, (max_x / 2) + 1);
+	wprintw(*win, "Size");
 
 	wrefresh(*win);
 	#endif
@@ -163,6 +168,6 @@ static void get_row_col(int* row, int* col)
 
 	getmaxyx(stdscr, max_y, max_x);
 
-	*row = max_y - ROW_MENU;
+	*row = max_y - ROW_MENU - 1;
 	*col = (max_x / 2) - 1;
 }
