@@ -56,7 +56,7 @@ int main()
 						&(cwd[curr_win]));
 				break;
 			case 9: // Tab
-				act_tab(win, row, namelist, &curr_win);
+				act_tab(win, row, namelist, &curr_win, cwd);
 				break;
 			case KEY_UP:
 				if (row[curr_win] > 0)

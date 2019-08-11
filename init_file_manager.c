@@ -8,7 +8,7 @@
 
 #define ROW_MENU 1
 
-#define ROW_COMMAND_STR 1
+int START_ROW_COMM_STR;
 
 const int COLOR_TEXT = 1;
 const int UNCOLOR_TEXT = 2;
@@ -71,6 +71,7 @@ int init_file_manager(WINDOW** dwin_left, WINDOW** dwin_right)
 	#endif
 
 	init_menu();
+	init_command_str();
 
 	startx2 = get_startx2();
 	
@@ -91,6 +92,16 @@ int init_file_manager(WINDOW** dwin_left, WINDOW** dwin_right)
 
 	delwin(win_right);
 	delwin(win_left);
+
+	return 0;
+}
+
+static int init_command_str()
+{
+	int max_y, max_x;
+	getmaxyx(stdscr, max_y, max_x);
+
+	START_ROW_COMM_STR = max_y - 2;
 
 	return 0;
 }

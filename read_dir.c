@@ -45,7 +45,7 @@ static int output_dir(WINDOW* win, struct dirent** namelist, int n)
 		wmove(win, i, 1);
 		wprintw(win, "%s", namelist[i]->d_name);
 
-		#if 0
+		#if 1
 		ret = stat(namelist[i]->d_name, &sb);
 		if (ret) {
 			perror("stat");

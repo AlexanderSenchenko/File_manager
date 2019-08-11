@@ -30,7 +30,7 @@ void set_color_row(WINDOW* win, int row, struct dirent* info, int num)
 	wmove(win, row, 0);
 	wprintw(win, " %s", info->d_name);
 
-	#if 0
+	#if 1
 	ret = stat(info->d_name, &sb);
 	if (ret) {
 		perror("stat");

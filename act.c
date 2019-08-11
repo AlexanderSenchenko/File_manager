@@ -10,12 +10,16 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <fcntl.h>
+
 #include "act.h"
 #include "dir.h"
 #include "set_color.h"
 
 extern const int COLOR_TEXT;
 extern const int UNCOLOR_TEXT;
+
+extern int START_ROW_COMM_STR;
 
 void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int curr_win,
 								char** cwd)
@@ -28,27 +32,56 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int curr_win,
 	int fd_read;
 	int fd_write;
 
+	int ret_chdir;
+
+	int permission = 0;
+
+	#ifndef DEBUG
+	int max_y, max_x;
+	getmaxyx(stdscr, max_y, max_x);
+	#endif
+
 	ret = stat(name, &sb);
 	if (ret) {
+		#if 0
+		wmove(stdscr, START_ROW_COMM_STR, 0);
+		whline(stdscr, ' ', max_x);
+		wmove(stdscr, START_ROW_COMM_STR, 0);
+		wrefresh(stdscr);
+		#endif
 		perror("stat");
 		return;
 	}
 
 	if ((sb.st_mode & S_IFMT) != S_IFREG) {
-		#ifdef DEBUG
 		printf("%s not file\n", name);
-		#endif
 		return;
 	}
 
-	if ((sb.st_mode & S_IRUSR) != S_IRUSR) {
+	if ((permission = (sb.st_mode & S_IRUSR)) != S_IRUSR) {
 		#ifdef DEBUG
 		printf("Owner not have read permission\n");
 		#endif
 		return;
 	}
 
-	
+	fd_read = open(name, O_RDONLY);
+	if (fd_read == -1) {
+		perror("open");
+		return;
+	}
+
+	ret_chdir = chdir(cwd[curr_win ^ 1]);
+	if (ret_chdir) {
+		perror("chdir");
+		close(fd_read);
+		return;
+	}
+
+	fd_write = open(name, O_WRONLY | O_CREAT);
+
+	close(fd_write);
+	close(fd_read);
 }
 
 void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
@@ -68,7 +101,8 @@ void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)
 	#endif
 }
 
-void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win)
+void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win,
+							char** cwd)
 {
 	int ret_chdir;
 
@@ -80,6 +114,12 @@ void act_tab(WINDOW** win, int* row, struct dirent*** namelist, int* curr_win)
 	#endif
 
 	*curr_win ^= 1;
+
+	ret_chdir = chdir(cwd[*curr_win]);
+	if (ret_chdir) {
+		perror("chdir");
+		return;
+	}
 
 	#ifndef DEBUG
 	set_color_row(win[*curr_win], row[*curr_win],
