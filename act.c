@@ -51,9 +51,12 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 	char buf[SIZE_BUF];
 	memset(buf, 0, SIZE_BUF);
 
+	off_t curr_len;
+
+	#ifndef DEBUG
 	pthread_t tid;
 	void* status;
-	off_t curr_len;
+	#endif
 
 	if (stat(name, &sb)) {
 		#ifndef DEBUG
@@ -132,8 +135,10 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 		return;
 	}
 
+	#ifndef DEBUG
 	pthread_create(&tid, NULL, progress_bar, NULL);
 	pthread_mutex_init(&mutex, NULL);
+	#endif
 	
 	while ((curr_len != 0) && ((ret_read = read(fd_read, buf, SIZE_BUF)) != 0)) {
 		if (ret_read == -1) {
@@ -141,6 +146,7 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 				continue;
 			#ifndef DEBUG
 			output_to_comm_str("Fatal error: read");
+			pthread_cancel(tid);
 			#else
 			perror("read");
 			#endif
@@ -149,14 +155,17 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 
 		curr_len -= ret_read;
 
+		#ifndef DEBUG
 		pthread_mutex_lock(&mutex);
 		len_read += ret_read;
 		pthread_mutex_unlock(&mutex);
+		#endif
 
 		ret_write = write(fd_write, buf, ret_read);
 		if (ret_write == -1) {
 			#ifndef DEBUG
 			output_to_comm_str("Error: write");
+			pthread_cancel(tid);
 			#else
 			perror("write");
 			#endif
@@ -164,13 +173,12 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 		}
 
 		memset(buf, 0, ret_read);
-
-		sleep(1);
 	}
 
+	#ifndef DEBUG
 	pthread_join(tid, &status);
-
 	pthread_mutex_destroy(&mutex);
+	#endif
 
 	close(fd_read);
 	close(fd_write);
@@ -193,9 +201,10 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 
 void* progress_bar(void* ptr)
 {
-	// off_t lockal_len = len;
 	off_t share;
-	int precent = 0;
+	float precent;
+	int count_cells = 0;
+	int i;
 	int max_y, max_x;
 	getmaxyx(stdscr, max_y, max_x);
 
@@ -204,30 +213,29 @@ void* progress_bar(void* ptr)
 		share = len_read;
 		pthread_mutex_unlock(&mutex);
 
-		// if (len * 0.01 * share > precent) {
-		precent = share;
+		precent = (float) share;
+		precent = (precent / len) * 100;
+
+		while ((count_cells * 2) <= precent)
+			count_cells++;
+
 		wmove(stdscr, START_ROW_COMM_STR, 0);
 		whline(stdscr, ' ', max_x);
 		
 		wmove(stdscr, START_ROW_COMM_STR, 0);
 		wprintw(stdscr, "[");
-		whline(stdscr, '_', 10);
-		wmove(stdscr, START_ROW_COMM_STR, 11);
-		wprintw(stdscr, "] ");
-		wprintw(stdscr, "%ld%c", share, "%");
+		
+		whline(stdscr, '*', count_cells);
+		wmove(stdscr, START_ROW_COMM_STR, count_cells + 1);
+		whline(stdscr, ' ', 50 - count_cells);
 
-			// precent++;
-		// }
+		wmove(stdscr, START_ROW_COMM_STR, 51);
+		wprintw(stdscr, "] ");
+		wprintw(stdscr, "%.0f", precent);
 
 		wrefresh(stdscr);
 		if (share == len)
 			break;
-
-		#if 0
-		if(lockal_len * share > precent) {
-			precent
-		}
-		#endif
 	}
 
 	return NULL;
