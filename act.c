@@ -16,6 +16,8 @@
 
 #include <errno.h>
 
+#include <pthread.h>
+
 #include "act.h"
 #include "dir.h"
 #include "set_color.h"
@@ -26,6 +28,11 @@ extern const int COLOR_TEXT;
 extern const int UNCOLOR_TEXT;
 
 extern int START_ROW_COMM_STR;
+
+off_t len;
+off_t len_read;
+
+pthread_mutex_t mutex;
 
 void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 						int curr_win, char** cwd)
@@ -39,11 +46,14 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 
 	int permission = 0;
 
-	off_t len;
 	ssize_t ret_read;
 	ssize_t ret_write;
 	char buf[SIZE_BUF];
 	memset(buf, 0, SIZE_BUF);
+
+	pthread_t tid;
+	void* status;
+	off_t curr_len;
 
 	if (stat(name, &sb)) {
 		#ifndef DEBUG
@@ -55,6 +65,8 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 	}
 
 	len = sb.st_size;
+	curr_len = len;
+	len_read = 0;
 
 	if ((sb.st_mode & S_IFMT) != S_IFREG) {
 		#ifndef DEBUG
@@ -119,8 +131,11 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 		}
 		return;
 	}
+
+	pthread_create(&tid, NULL, progress_bar, NULL);
+	pthread_mutex_init(&mutex, NULL);
 	
-	while ((len != 0) && ((ret_read = read(fd_read, buf, SIZE_BUF)) != 0)) {
+	while ((curr_len != 0) && ((ret_read = read(fd_read, buf, SIZE_BUF)) != 0)) {
 		if (ret_read == -1) {
 			if (errno == EINTR)
 				continue;
@@ -132,7 +147,11 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 			break;
 		}
 
-		len -= ret_read;
+		curr_len -= ret_read;
+
+		pthread_mutex_lock(&mutex);
+		len_read += ret_read;
+		pthread_mutex_unlock(&mutex);
 
 		ret_write = write(fd_write, buf, ret_read);
 		if (ret_write == -1) {
@@ -145,10 +164,16 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 		}
 
 		memset(buf, 0, ret_read);
+
+		sleep(1);
 	}
 
-	close(fd_write);
+	pthread_join(tid, &status);
+
+	pthread_mutex_destroy(&mutex);
+
 	close(fd_read);
+	close(fd_write);
 
 	free_namelist(namelist[curr_win ^ 1], n[curr_win ^ 1]);
 	wclear(win[curr_win ^ 1]);	
@@ -162,10 +187,50 @@ void act_copy(WINDOW** win, int* row, struct dirent*** namelist, int* n,
 		#else
 		perror("chdir");
 		#endif
-		close(fd_read);
-		close(fd_write);
 		exit(EXIT_FAILURE);
 	}
+}
+
+void* progress_bar(void* ptr)
+{
+	// off_t lockal_len = len;
+	off_t share;
+	int precent = 0;
+	int max_y, max_x;
+	getmaxyx(stdscr, max_y, max_x);
+
+	while(1) {
+		pthread_mutex_lock(&mutex);
+		share = len_read;
+		pthread_mutex_unlock(&mutex);
+
+		// if (len * 0.01 * share > precent) {
+		precent = share;
+		wmove(stdscr, START_ROW_COMM_STR, 0);
+		whline(stdscr, ' ', max_x);
+		
+		wmove(stdscr, START_ROW_COMM_STR, 0);
+		wprintw(stdscr, "[");
+		whline(stdscr, '_', 10);
+		wmove(stdscr, START_ROW_COMM_STR, 11);
+		wprintw(stdscr, "] ");
+		wprintw(stdscr, "%ld%c", share, "%");
+
+			// precent++;
+		// }
+
+		wrefresh(stdscr);
+		if (share == len)
+			break;
+
+		#if 0
+		if(lockal_len * share > precent) {
+			precent
+		}
+		#endif
+	}
+
+	return NULL;
 }
 
 void act_mv(WINDOW* win, int* row, struct dirent** namelist, int way_move)

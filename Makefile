@@ -1,5 +1,6 @@
 NCURSES_CFLAGS := -D_GNU_SOURSE -I/usr/include/ncursesw
 NCURSES_LIBS := -lncursesw -ltinfo
+PTHREAD := -lpthread
 DEBUG := -DDEBUG
 
 all:
@@ -8,7 +9,7 @@ all:
 	gcc init_file_manager.c -c -g $(NCURSES_CFLAGS)
 	gcc read_dir.c -c -g $(NCURSES_CFLAGS)
 	gcc main.c -c -g $(NCURSES_CFLAGS)
-	gcc main.o init_file_manager.o read_dir.o act.o set_color.o -o main $(NCURSES_LIBS)
+	gcc main.o init_file_manager.o read_dir.o act.o set_color.o -o main $(NCURSES_LIBS) $(PTHREAD)
 
 .PHONY: debug
 debug:
@@ -17,4 +18,4 @@ debug:
 	gcc init_file_manager.c -c -g $(NCURSES_CFLAGS) $(DEBUG)
 	gcc read_dir.c -c -g $(NCURSES_CFLAGS) $(DEBUG)
 	gcc main.c -c -g $(NCURSES_CFLAGS) $(DEBUG)
-	gcc main.o init_file_manager.o read_dir.o act.o set_color.o -o main $(NCURSES_LIBS)
+	gcc main.o init_file_manager.o read_dir.o act.o set_color.o -o main $(NCURSES_LIBS) $(PTHREAD)

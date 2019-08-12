@@ -2,6 +2,7 @@
 #define ACT_H
 
 void act_copy(WINDOW**, int*, struct dirent***, int*, int, char**);
+void* progress_bar(void* ptr);
 void act_mv(WINDOW*, int*, struct dirent**, int);
 void act_tab(WINDOW**, int*, struct dirent***, int*, char**);
 int act_enter(WINDOW*, int*, struct dirent***, int*, char**);
